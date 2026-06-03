@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Modifier un client — Company{% endblock %}
+
+{% block content %}
+        {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+                {% if message.tags == "error" %}
+                    <li class="alert alert-danger">{{message}}</li>
+                {% else %}
+                    <li class="alert alert-{{message.tags}}">{{message}}</li>
+                {% endif %}
+            {% endfor %}
+        </ul>
+        {% endif %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Modifier client #{{ customer.id }}</h1>
+        <a href="{% url 'company.customerDetail' customer.id %}" class="btn btn-outline-secondary btn-sm">← Retour</a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="post" action="{% url 'company.customerUpdate' customer.id %}">
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="{{ form.first_name.id_for_label }}" class="form-label">Prénom</label>
+                        {{ form.first_name }}
+                        {% for error in form.first_name.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="{{ form.last_name.id_for_label }}" class="form-label">Nom</label>
+                        {{ form.last_name }}
+                        {% for error in form.last_name.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="{{ form.email.id_for_label }}" class="form-label">Email</label>
+                        {{ form.email }}
+                        {% for error in form.email.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="{{ form.phone.id_for_label }}" class="form-label">Téléphone</label>
+                        {{ form.phone }}
+                        {% for error in form.phone.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="col-12">
+                        <label for="{{ form.address.id_for_label }}" class="form-label">Adresse</label>
+                        {{ form.address }}
+                        {% for error in form.address.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="mt-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    <a href="{% url 'company.customerDetail' customer.id %}" class="btn btn-light">Annuler</a>
+                </div>
+
+            </form>
+        </div>
+    </div>
+{% endblock %}

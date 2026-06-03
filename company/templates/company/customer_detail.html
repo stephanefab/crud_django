@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}{{ customer.first_name }} {{ customer.last_name }} — Company{% endblock %}
+
+{% block content %}
+        {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+                {% if message.tags == "error" %}
+                    <li class="alert alert-danger">{{message}}</li>
+                {% else %}
+                    <li class="alert alert-{{message.tags}}">{{message}}</li>
+                {% endif %}
+            {% endfor %}
+        </ul>
+        {% endif %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Fiche client</h1>
+        <a href="{% url 'company.customers' %}" class="btn btn-outline-secondary btn-sm">← Retour à la liste</a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-white d-flex align-items-center gap-3">
+            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold"
+                 style="width:48px;height:48px;">
+                {{ customer.first_name|first|upper }}{{ customer.last_name|first|upper }}
+            </div>
+            <div>
+                <h2 class="h5 mb-0">{{ customer.first_name }} {{ customer.last_name }}</h2>
+                <small class="text-muted">Client #{{ customer.id }}</small>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <dl class="row mb-0">
+                <dt class="col-sm-3 text-muted">Prénom</dt>
+                <dd class="col-sm-9">{{ customer.first_name }}</dd>
+
+                <dt class="col-sm-3 text-muted">Nom</dt>
+                <dd class="col-sm-9">{{ customer.last_name }}</dd>
+
+                <dt class="col-sm-3 text-muted">Email</dt>
+                <dd class="col-sm-9">
+                    {% if customer.email %}
+                        <a href="mailto:{{ customer.email }}">{{ customer.email }}</a>
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                </dd>
+
+                <dt class="col-sm-3 text-muted">Téléphone</dt>
+                <dd class="col-sm-9">
+                    {% if customer.phone %}
+                        <a href="tel:{{ customer.phone }}">{{ customer.phone }}</a>
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                </dd>
+
+                <dt class="col-sm-3 text-muted">Adresse</dt>
+                <dd class="col-sm-9">{{ customer.address|default:"—"|linebreaksbr }}</dd>
+            </dl>
+        </div>
+
+        <div class="card-footer bg-white d-flex gap-2">
+            <a href="{% url 'company.customerUpdate' customer.id %}" class="btn btn-warning btn-sm">Modifier</a>
+
+            <form method="post" action="{% url 'company.customerDelete' customer.id %}"
+                  onsubmit="return confirm('Supprimer ce client ?');" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm">Supprimer</button>
+            </form>
+            <a href="{% url 'company.customers' %}" class="btn btn-light btn-sm">Liste des clients</a>
+        </div>
+    </div>
+{% endblock %}

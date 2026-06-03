@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Accueil — Company{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Liste des entreprises</h1>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <p class="card-text text-muted mb-0">
+                Bienvenue sur l'app <strong>company</strong>. Cette page hérite de
+                <code>base.html</code> et utilise Bootstrap.
+            </p>
+            <a href="{% url 'company.customers' %}">Customers</a>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Accueil — Company{% endblock %}
+
+{% block content %}
+        {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+            <li class="alert alert-{{message.tags}}">{{message}}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0">Liste des employés</h1>
+        <a href="{% url 'company.customerCreate' %}" class="btn btn-primary btn-sm">+ Ajouter</a>
+    </div>
+
+    {# --- Barre de recherche --- #}
+    <form method="get" class="row g-2 mb-3">
+        <div class="col">
+            <input type="text" name="q" value="{{ q }}" class="form-control"
+                   placeholder="Rechercher par prénom, nom ou email…">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-outline-primary">Rechercher</button>
+        </div>
+        {% if q %}
+        <div class="col-auto">
+            <a href="{% url 'company.customers' %}" class="btn btn-outline-secondary">Réinitialiser</a>
+        </div>
+        {% endif %}
+    </form>
+
+    {% if q %}
+        <p class="text-muted small">
+            {{ page.paginator.count }} résultat(s) pour « {{ q }} »
+        </p>
+    {% endif %}
+
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Prénom</th>
+                    <th scope="col">Nom</th>
+                    <th scope="col">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for customer in page %}
+                <tr>
+                    <td>{{ customer.first_name }}</td>
+                    <td>{{ customer.last_name }}</td>
+                    <td><a href="{% url 'company.customerDetail' customer.id %}">Voir</a></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="text-center text-muted py-3">Aucun client</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {# --- Pagination (conserve la recherche q) --- #}
+    {% if page.paginator.num_pages > 1 %}
+    <nav aria-label="Pagination">
+        <ul class="pagination justify-content-center">
+
+            <li class="page-item {% if not page.has_previous %}disabled{% endif %}">
+                <a class="page-link"
+                   href="{% if page.has_previous %}?page={{ page.previous_page_number }}&q={{ q }}{% else %}#{% endif %}">
+                   Précédent
+                </a>
+            </li>
+
+            {% for num in page.paginator.page_range %}
+                <li class="page-item {% if num == page.number %}active{% endif %}">
+                    <a class="page-link" href="?page={{ num }}&q={{ q }}">{{ num }}</a>
+                </li>
+            {% endfor %}
+
+            <li class="page-item {% if not page.has_next %}disabled{% endif %}">
+                <a class="page-link"
+                   href="{% if page.has_next %}?page={{ page.next_page_number }}&q={{ q }}{% else %}#{% endif %}">
+                   Suivant
+                </a>
+            </li>
+
+        </ul>
+    </nav>
+    {% endif %}
+{% endblock %}
