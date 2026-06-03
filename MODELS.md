@@ -683,6 +683,104 @@ with transaction.atomic():
 
 > ⚠️ `bulk_create`/`bulk_update` **ne déclenchent pas** `save()` ni les signaux : à utiliser pour la performance, pas quand tu dépends d'une logique dans `save()`.
 
+### 12.11 Transactions & atomicité
+
+Une **transaction** regroupe plusieurs opérations en **un seul bloc indivisible** : soit **tout** réussit, soit **rien** n'est écrit (`rollback`). C'est la propriété **ACID — Atomicité** : pas d'état « à moitié fait ».
+
+> 🧠 Exemple type : un virement = débiter A **et** créditer B. Si le crédit échoue après le débit, il **faut** annuler le débit. Sans transaction, l'argent disparaît.
+
+#### `transaction.atomic` — bloc ou décorateur
+
+```python
+from django.db import transaction
+
+# en bloc "with"
+with transaction.atomic():
+    order = Order.objects.create(customer=c, amount=100)
+    OrderLine.objects.create(order=order, product=p, quantity=2)
+    # exception ici → les DEUX créations sont annulées (rollback complet)
+
+# en décorateur (toute la fonction est atomique)
+@transaction.atomic
+def passer_commande(c, p):
+    order = Order.objects.create(customer=c, amount=100)
+    OrderLine.objects.create(order=order, product=p, quantity=2)
+```
+
+Si une exception sort du bloc, Django fait un **rollback** automatique. Si tout passe, un **commit**.
+
+#### Le comportement par défaut de Django
+
+Par défaut, **chaque requête HTTP** n'est PAS une grande transaction : chaque écriture est validée immédiatement (autocommit). Pour envelopper **chaque vue** dans une transaction, on active `ATOMIC_REQUESTS` :
+
+```python
+# settings.py
+DATABASES = {
+    "default": {
+        # ...
+        "ATOMIC_REQUESTS": True,   # chaque requête = une transaction (commit/rollback auto)
+    }
+}
+```
+
+#### Points importants
+
+- **Capturer l'exception à l'extérieur** du bloc, sinon le rollback ne se déclenche pas :
+  ```python
+  try:
+      with transaction.atomic():
+          ...
+  except IntegrityError:
+      messages.error(request, "Échec, opération annulée.")
+  ```
+- **Blocs imbriqués** : un `atomic()` dans un autre crée un **savepoint** (rollback partiel possible). Le commit final n'a lieu qu'à la sortie du bloc le plus externe.
+- **`select_for_update()`** verrouille les lignes lues jusqu'à la fin de la transaction → évite les *race conditions* sur une ressource concurrente :
+  ```python
+  with transaction.atomic():
+      compte = Compte.objects.select_for_update().get(pk=1)   # verrou
+      compte.solde -= 100
+      compte.save()
+  ```
+- **`transaction.on_commit(fn)`** : exécuter une action **seulement si** la transaction réussit (ex : envoyer un email, vider un cache) — indispensable pour ne pas agir sur des données annulées.
+  ```python
+  transaction.on_commit(lambda: envoyer_email(order))
+  ```
+- **`F()` expressions** (§12.7) sont atomiques au niveau base (`F("solde") - 100`), à privilégier pour les compteurs concurrents.
+
+> ⚠️ `TestCase` enveloppe chaque test dans une transaction annulée → pour **tester** du code transactionnel réel (et `on_commit`), utilise `TransactionTestCase` ou `self.captureOnCommitCallbacks()` (voir [TESTS.md §7](TESTS.md)).
+
+### 12.12 Idempotence
+
+Une opération est **idempotente** si l'exécuter **plusieurs fois** produit le **même résultat** qu'une seule fois. C'est crucial dès qu'une action peut être **rejouée** : double-clic, F5 sur un POST, retry réseau, webhook renvoyé, tâche relancée.
+
+```
+créer 1 commande              → 1 exécution = 1 commande, 3 exécutions = 3 commandes   ❌ NON idempotent
+mettre statut = "payé"        → 1 ou 3 exécutions = statut "payé"                        ✅ idempotent
+```
+
+**Pourquoi ça compte** : les services externes (paiement, webhooks) **renvoient parfois deux fois** la même requête. Sans protection, tu crées deux commandes, factures deux fois, etc.
+
+#### Techniques pour rendre une opération idempotente
+
+- **`get_or_create` / `update_or_create`** : créer **seulement si** ça n'existe pas déjà.
+  ```python
+  obj, created = Order.objects.get_or_create(
+      reference=ref,                         # clé naturelle unique
+      defaults={"customer": c, "amount": 100},
+  )
+  # rejouer avec la même "ref" ne crée PAS de doublon
+  ```
+- **Contrainte d'unicité** en base (`unique=True` / `UniqueConstraint`) : la base **refuse** le doublon, même en cas de course.
+  ```python
+  class Order(models.Model):
+      reference = models.CharField(max_length=64, unique=True)   # garde-fou ultime
+  ```
+- **Clé d'idempotence** : l'appelant fournit un identifiant unique par opération ; tu le stockes et ignores les rejeux du même identifiant.
+- **Post/Redirect/Get** : côté web, rediriger après un POST réussi évite la re-soumission au F5 (voir [DJANGO.md §10.3](DJANGO.md)). C'est l'idempotence « vue utilisateur ».
+- **Vérifier l'état avant d'agir** : `if order.status != "payé": order.pay()` plutôt que d'appliquer aveuglément.
+
+> 🧠 **Transaction + idempotence se complètent** : la transaction garantit *« tout ou rien »* pour **une** exécution ; l'idempotence garantit *« pas de dégâts »* si l'opération est **rejouée**. Pour une action sensible (paiement, commande), on veut **les deux** : un bloc `atomic()` **et** une clé/contrainte d'unicité.
+
 ---
 
 ## 13. La pagination
